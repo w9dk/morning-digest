@@ -1,0 +1,41 @@
+name: Deploy preview HTML
+
+on:
+  workflow_dispatch:
+    inputs:
+      html_base64:
+        description: Base64 encoded standalone HTML (visible in the public workflow run)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Prepare preview
+        env:
+          PREVIEW_B64: ${{ inputs.html_base64 }}
+        run: |
+          mkdir -p _site
+          printf '%s' "$PREVIEW_B64" | base64 --decode > _site/index.html
+          test -s _site/index.html
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
